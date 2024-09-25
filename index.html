@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opportunity Meeting Transcript</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h2 {
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background-image: linear-gradient(to right, #4CAF50, #45A049);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: background-color 0.3s ease;
+        }
+        button:disabled {
+            background-color: #b5b5b5;
+            cursor: not-allowed;
+        }
+        button .spinner {
+            display: none;
+            margin-left: 10px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #fff;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            animation: spin 1s linear infinite;
+        }
+        button.loading .spinner {
+            display: inline-block;
+        }
+        button.loading .button-text {
+            display: none;
+        }
+        button:hover {
+            background-image: linear-gradient(to right, #45A049, #3E8E41);
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Header styling */
+        .header {
+            width: 100%;
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px 0;
+        }
+        .header h2 {
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            font-size: 2rem;
+        }
+
+        /* Center content and limit width on large screens */
+        .content-wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Add responsive layout */
+        @media (max-width: 768px) {
+            .header h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- header -->
+    <div class="header">
+        <div class="content-wrapper">
+            <h2>Pepsales Simulation Testing Tool</h2>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Select Opportunity</h2>
+        <div class="form-group">
+            <label for="opportunity">Opportunity</label>
+            <select id="opportunity" onchange="fetchMeetings()">
+                <option value="">Select an opportunity...</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Select Meeting</h2>
+        <div class="form-group">
+            <label for="meeting">Meeting</label>
+            <select id="meeting">
+                <option value="">Select a meeting...</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Add Transcript</h2>
+        <div class="form-group">
+            <label for="transcript">Transcript</label>
+            <textarea id="transcript" rows="5" placeholder="Add transcript..."></textarea>
+        </div>
+        <button id="submitButton" onclick="submitTranscript()">
+            <span class="button-text">Submit</span>
+            <div class="spinner"></div>
+        </button>
+    </div>
+
+    <script>
+        const opportunitySelect = document.getElementById('opportunity');
+        const meetingSelect = document.getElementById('meeting');
+        const submitButton = document.getElementById('submitButton');
+
+        // Fetch opportunities from API
+        function fetchOpportunities() {
+            fetch('http://13.60.53.44/api/opportunity/search-opportunities', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name_snippet: "" })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const opportunities = data.data;
+                opportunities.forEach(opportunity => {
+                    const option = document.createElement('option');
+                    option.value = opportunity.id;
+                    option.textContent = opportunity.name;
+                    opportunitySelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error fetching opportunities:', error));
+        }
+
+        // Fetch meetings when an opportunity is selected
+        function fetchMeetings() {
+            const opportunityId = opportunitySelect.value;
+            if (!opportunityId) return;
+
+            fetch(`http://13.60.53.44/api/opportunity/fetch-opportunity?opportunity_id=${opportunityId}`)
+            .then(response => response.json())
+            .then(data => {
+                const meetings = data.data.meetings;
+                meetingSelect.innerHTML = '<option value="">Select a meeting...</option>'; // Reset meetings
+                meetings.forEach(meeting => {
+                    const option = document.createElement('option');
+                    option.value = meeting._id;
+                    option.textContent = meeting.title;
+                    meetingSelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error fetching meetings:', error));
+        }
+
+        // Submit transcript
+        function submitTranscript() {
+            const opportunityId = opportunitySelect.value;
+            const meetingId = meetingSelect.value;
+            const transcript = document.getElementById('transcript').value;
+
+            if (!opportunityId || !meetingId || !transcript) {
+                alert('Please select opportunity, meeting, and add a transcript.');
+                return;
+            }
+
+            // Disable button and show spinner
+            submitButton.disabled = true;
+            submitButton.classList.add('loading');
+
+            fetch('http://13.60.53.44/api/opportunity/add-transcript-to-meeting', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    opportunity_id: opportunityId,
+                    meeting_id: meetingId,
+                    transcript: transcript
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Transcript submitted successfully!');
+                // Enable button and hide spinner
+                submitButton.disabled = false;
+                submitButton.classList.remove('loading');
+            })
+            .catch(error => {
+                console.error('Error submitting transcript:', error);
+                // Enable button and hide spinner
+                submitButton.disabled = false;
+                submitButton.classList.remove('loading');
+            });
+        }
+
+        // Initialize opportunities on page load
+        window.onload = fetchOpportunities;
+    </script>
+
+</body>
+</html>
